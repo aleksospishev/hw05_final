@@ -1,0 +1,238 @@
+import shutil
+import tempfile
+from django.contrib.auth import get_user_model
+from django.test import TestCase, Client, override_settings
+from ..models import Post, Group, User, Comment
+from django.urls import reverse
+from django import forms
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+
+User = get_user_model()
+TEST_POST_OFFSET = settings.POSTS_PER_PAGE - 1
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
+
+
+# Для сохранения media-файлов в тестах будет использоваться
+# временная папка TEMP_MEDIA_ROOT, а потом мы ее удалим
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+class PostViewTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='test_user')
+        cls.group = Group.objects.create(
+            title='тестовый заголовок',
+            slug='test-slug',
+            description='тестовое описание'
+        )
+        cls.post = Post.objects.create(
+            text='Тестовый текст',
+            author=cls.user,
+            group=cls.group,
+        )
+
+    def setUp(self):
+        # # Создаем неавторизованный клиент
+        self.guest_client = Client()
+        # # Создаем авторизованый клиент
+        self.user = PostViewTests.user
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+
+    def test_pages_uses_correct_template(self):
+        """URL-адрес использует соответствующий шаблон."""
+        # Собираем в словарь пары reverse(name):"имя_html_шаблона"
+        templates_pages_names = {
+            reverse('posts:index'): 'posts/index.html',
+            reverse('posts:group_list', kwargs={'slug': self.group.slug}):
+                'posts/group_list.html',
+            reverse('posts:profile', kwargs={'username': self.user.username}):
+                'posts/profile.html',
+            reverse('posts:post_detail', kwargs={'post_id': self.post.id}):
+                'posts/post_detail.html',
+            reverse('posts:post_create'): 'posts/create_post.html',
+            reverse('posts:post_edit', kwargs={'post_id': self.post.id}):
+                'posts/create_post.html',
+            reverse('about:author'): 'about/author.html',
+            reverse('about:tech'): 'about/tech.html',
+            reverse('posts:follow_index'): 'posts/follow.html'
+        }
+        for reverse_name, template in templates_pages_names.items():
+            with self.subTest(reverse_name=reverse_name):
+                response = self.authorized_client.get(reverse_name)
+                self.assertTemplateUsed(response, template)
+
+    def test_index_page_show_correct_context(self):
+        """в Шаблон index, group_list, profile  передан созданный пост."""
+        """ пост находится первым на странице"""
+        templates_pages_names = {
+            reverse('posts:index'),
+            reverse('posts:group_list', kwargs={'slug': self.group.slug}),
+            reverse('posts:profile',
+                    kwargs={'username': self.user.username})
+        }
+        for reverse_name in templates_pages_names:
+            with self.subTest(reverse_name=reverse_name):
+                response = self.authorized_client.get(reverse_name)
+                first_object = response.context['page_obj'][0]
+                self.assertEqual(first_object, self.post)
+
+    def test_newpost_isnot_in_notgroup(self):
+        """ проверка на то что новый пост не попал в другие группы"""
+        """ и не отображается на странице другого пользователя"""
+        new_group = Group.objects.create(
+            title='new_group',
+            slug='new_group',
+            description='new group for test'
+        )
+        new_user = User.objects.create_user(username='new_user')
+        user_test = Client()
+        user_test.force_login(new_user)
+        templates_pages_names = {
+            reverse('posts:group_list', kwargs={'slug': new_group.slug}),
+            reverse('posts:profile',
+                    kwargs={'username': new_user.username})
+        }
+        for reverse_name in templates_pages_names:
+            with self.subTest(reverse_name=reverse_name):
+                response = self.authorized_client.get(reverse_name)
+                first_object = response.context['page_obj']
+                self.assertNotIn(self.post, first_object)
+
+    def test_post_detail_show_correct_context(self):
+        """Шаблон post_detail сформирован с правильным контекстом."""
+        author_comment = User.objects.create_user(username='author_comment')
+        comment = Comment.objects.create(
+            author=author_comment,
+            text='test_comment',
+            post=self.post
+        )
+        response = self.authorized_client.get(reverse(
+            'posts:post_detail', kwargs={'post_id': self.post.id}))
+        first_object = response.context['post']
+        self.assertEqual(first_object.text, self.post.text)
+        self.assertEqual(first_object.author.posts.count(),
+                         self.post.author.posts.count())
+
+    def test_create_for_edit_show_correct_context(self):
+        """Шаблон post_create для редактирования поста ."""
+        response_list = (
+            reverse('posts:post_edit', kwargs={'post_id': self.post.id}),
+            reverse('posts:post_create')
+        )
+        form_fields = {
+            'text': forms.fields.CharField,
+            'group': forms.fields.ChoiceField
+        }
+        for response_test in response_list:
+            response = self.authorized_client.get(response_test)
+            for value, expected in form_fields.items():
+                with self.subTest(value=value):
+                    form_field = response.context.get(
+                        'form').fields.get(value)
+                    self.assertIsInstance(form_field, expected)
+
+    def test_index_page_show_correct_context(self):
+        """в Шаблон index, group_list, profile  передан созданный пост."""
+        """ пост находится первым на странице"""
+        templates_pages_names = {
+            reverse('posts:index'),
+            reverse('posts:group_list', kwargs={'slug': self.group.slug}),
+            reverse('posts:profile',
+                    kwargs={'username': self.user.username})
+        }
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
+        new_post = Post.objects.create(
+            text='new_post',
+            group=self.group.title,
+            author=self.user,
+            image=uploaded
+        )
+
+        for reverse_name in templates_pages_names:
+            with self.subTest(reverse_name=reverse_name):
+                response = self.authorized_client.get(reverse_name)
+                first_object = response.context['page_obj'][0]
+                self.assertEqual(first_object, new_post)
+
+    def test_error404_page(self):
+        response = self.guest_client.get('/nonexist-page/')
+        self.assertEqual(response.status_code, 404)
+        self.assertTemplateUsed(response, 'core/404.html')
+
+    def test_error403_page(self):
+        response = self.guest_client.get('/create/')
+        self.assertSetEqual(response.status_code, 403)
+        self.assertTemplateUsed(response, 'core/403.html')
+
+
+class PaginatorViewsTest(TestCase):
+    # Здесь создаются фикстуры: клиент и POST_COUNT тестовых записей.
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='user-test')
+        cls.group = Group.objects.create(
+            title='Заголовок для тестовой группы',
+            slug='slug_test',
+            description='Тестовое описание')
+        cls.post = []
+        for num_post in range(TEST_POST_OFFSET + settings.POSTS_PER_PAGE):
+            cls.post.append(
+                Post.objects.create(
+                    text=f'Тестовый пост + {num_post}',
+                    author=cls.user,
+                    group=cls.group
+                )
+            )
+
+    def setUp(self):
+        # # Создаем неавторизованный клиент
+        self.guest_client = Client()
+        # # Создаем авторизованый клиент
+        self.user = PaginatorViewsTest.user
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+
+    def test_first_page_paginators(self):
+        list_namespace = {
+            reverse('posts:index'),
+            reverse('posts:group_list', kwargs={'slug': self.group.slug}),
+            reverse('posts:profile', kwargs={'username': self.user.username})
+        }
+        for reverse_name in list_namespace:
+            with self.subTest(reverse_name=reverse_name):
+                response = self.client.get(reverse_name)
+                # Проверка: количество постов на первой странице равно
+                # POSTS_PER_PAGE=10.
+                self.assertEqual(len(response.context['page_obj']),
+                                 settings.POSTS_PER_PAGE)
+
+    def test_second_page_paginators(self):
+        list_namespace = {
+            reverse('posts:index'),
+            reverse('posts:group_list', kwargs={'slug': self.group.slug}),
+            reverse('posts:profile', kwargs={'username': self.user.username})
+        }
+        for reverse_name in list_namespace:
+            with self.subTest(reverse_name=reverse_name):
+                response = self.client.get(reverse_name + '?page=2')
+                # Проверка: количество постов на второй странице равно
+                # POSTS_PER_PAGE=10.
+                self.assertEqual(len(response.context['page_obj']),
+                                 TEST_POST_OFFSET)
+
