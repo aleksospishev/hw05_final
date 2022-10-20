@@ -350,4 +350,3 @@ class FollowTest(TestCase):
                                           kwargs={'username':
                                                   self.user.username}))
         self.assertEqual(response.status_code, 302)
-
