@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
-from ..models import Post, Group, Comment
+from ..models import Post, Group
 
 User = get_user_model()
 
@@ -97,4 +97,3 @@ class PostURLTests(TestCase):
     def test_post_edit_ne_author_users(self):
         response = self.ne_author.get(f'/posts/{self.post.id}/edit/')
         self.assertEqual(response.status_code, 302)
-

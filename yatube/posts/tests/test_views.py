@@ -2,13 +2,12 @@ import shutil
 import tempfile
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client, override_settings
-from ..models import Post, Group, User, Comment, Follow
+from ..models import Post, Group, User, Follow
 from django.urls import reverse
 from django import forms
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
-
 
 
 User = get_user_model()
@@ -48,7 +47,6 @@ class PostViewTests(TestCase):
         self.user = PostViewTests.user
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -343,11 +341,11 @@ class FollowTest(TestCase):
 
     def test_follow_guest(self):
         response = self.guest_client.get(reverse('posts:profile_follow',
-                                 kwargs={'username': self.user.username}))
+                                         kwargs={'username': self.user.username}))
         self.assertEqual(response.status_code, 302)
 
     def test_follow_author(self):
         response = self.author_client.get(reverse('posts:profile_follow',
-                                                 kwargs={'username': self.user.username}))
+                                          kwargs={'username': self.user.username}))
         self.assertEqual(response.status_code, 302)
 
