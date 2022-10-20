@@ -330,7 +330,7 @@ class FollowTest(TestCase):
         follow_count = Follow.objects.count()
         self.follower_client.get(reverse('posts:profile_follow',
                                  kwargs={'username': self.user.username}))
-        self.assertEqual(Follow.objects.all().count(), follow_count+1)
+        self.assertEqual(Follow.objects.all().count(), follow_count + 1)
 
     def test_unfollow(self):
         self.follower_client.get(reverse('posts:profile_follow',
@@ -341,11 +341,13 @@ class FollowTest(TestCase):
 
     def test_follow_guest(self):
         response = self.guest_client.get(reverse('posts:profile_follow',
-                                         kwargs={'username': self.user.username}))
+                                         kwargs={'username':
+                                                 self.user.username}))
         self.assertEqual(response.status_code, 302)
 
     def test_follow_author(self):
         response = self.author_client.get(reverse('posts:profile_follow',
-                                          kwargs={'username': self.user.username}))
+                                          kwargs={'username':
+                                                  self.user.username}))
         self.assertEqual(response.status_code, 302)
 
