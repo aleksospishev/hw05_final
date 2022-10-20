@@ -4,7 +4,7 @@
 {% block content %}
 {% load cache %}
   {% include 'includes/switcher.html' %}
-  {% cache 500 sidebar %}
+{#  {% cache 20 index with page_number %}#}
     {% for post in page_obj %}
       {% include 'includes/posts.html' %}
         {% if post.group %}
@@ -16,6 +16,6 @@
         {% endif %}
       {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
-  {% endcache %}
+{#  {% endcache %}#}
 {% include 'posts/paginator.html' %}
 {% endblock %}

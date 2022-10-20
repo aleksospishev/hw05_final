@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from ..models import Group, Post, User
+from ..models import Group, Post, User, Comment
 from django.conf import settings
 
 
@@ -47,29 +47,6 @@ class PostFormTests(TestCase):
         self.user = PostFormTests.user
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-
-    # пока не удаляю, но есть дубль тест с картинкой
-    # def test_create_post(self):
-    #     """ Валидная форма создания поста добавляет запись в базу"""
-    #     posts_count = Post.objects.count()
-    #     form_data = {
-    #         'text': 'Тестовый текст ',
-    #         'group': self.group.id,
-    #     }
-    #     # Отправляем POST-запрос
-    #     response = self.authorized_client.post(
-    #         reverse('posts:post_create'),
-    #         data=form_data,
-    #     )
-    #     self.assertRedirects(response, reverse(
-    #         'posts:profile', args={self.user.username}))
-    #     self.assertEqual(Post.objects.count(), posts_count + 1)
-    #     self.assertTrue(
-    #         Post.objects.filter(
-    #             text='Тестовый текст',
-    #             group=self.group.id,
-    #         ).exists()
-    #     )
 
     def test_edit_post(self):
         """Валидная форма изменения поста передается в БД"""
@@ -127,5 +104,21 @@ class PostFormTests(TestCase):
                 text='Тестовый текст',
                 group=self.group.id,
                 image='posts/small.gif',
+            ).exists()
+        )
+
+    def test_comment_forms(self):
+        comment_count = Comment.objects.count()
+        form_data = {'text': 'text_test', }
+        response = self.authorized_client.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
+            data=form_data,
+        )
+        self.assertRedirects(response, reverse(
+            'posts:post_detail', kwargs={'post_id': self.post.id}))
+        self.assertEqual(Comment.objects.count(), comment_count+1)
+        self.assertTrue(
+            Comment.objects.filter(
+                text='text_test',
             ).exists()
         )

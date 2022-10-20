@@ -10,7 +10,7 @@ from django.views.decorators.cache import cache_page
 User = get_user_model()
 
 
-@cache_page(60 * 20)
+@cache_page(60 * 20, key_prefix='page_number')
 def index(request):
     context = page_pagin(Post.objects.all(), request)
     return render(request, 'posts/index.html', context)
