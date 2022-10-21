@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
-from ..models import Post, Group, Comment, Follow
+from ..models import Post, Group
+from django.core.cache import cache
 
 User = get_user_model()
 
@@ -9,6 +10,7 @@ class PostURLTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+
         cls.user = User.objects.create_user(username='test_user')
         cls.group = Group.objects.create(
             title='тестовый заголовок',
@@ -21,9 +23,11 @@ class PostURLTests(TestCase):
             group=cls.group,
         )
 
+
     def setUp(self):
         # # Создаем неавторизованный клиент
         self.guest_client = Client()
+        cache.clear()
         # # Создаем авторизованый клиент автор
         self.user = PostURLTests.user
         self.authorized_client = Client()
@@ -100,8 +104,3 @@ class PostURLTests(TestCase):
         response = self.ne_author.get(f'/posts/{self.post.id}/edit/')
         self.assertEqual(response.status_code, 302)
 
-    def test_url_follow_guest_users(self):
-
-        response = self.authorized_client.get('/follow/')
-
-        self.assertEqual(response.status_code, 302)
