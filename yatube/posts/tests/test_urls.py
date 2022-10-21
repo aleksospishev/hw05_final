@@ -23,7 +23,6 @@ class PostURLTests(TestCase):
             group=cls.group,
         )
 
-
     def setUp(self):
         # # Создаем неавторизованный клиент
         self.guest_client = Client()
@@ -103,4 +102,3 @@ class PostURLTests(TestCase):
     def test_post_edit_ne_author_users(self):
         response = self.ne_author.get(f'/posts/{self.post.id}/edit/')
         self.assertEqual(response.status_code, 302)
-
