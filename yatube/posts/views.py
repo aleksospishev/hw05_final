@@ -105,7 +105,6 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    # информация о текущем пользователе доступна в переменной request.user
     context = page_pagin(Post.objects.
                          filter(author__following__user=request.user), request)
 
@@ -114,7 +113,6 @@ def follow_index(request):
 
 @login_required
 def profile_follow(request, username):
-    # Подписаться на автора
     author = get_object_or_404(User, username=username)
     user = request.user
     follower = Follow.objects.filter(

@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
-from ..models import Post, Group
+from ..models import Post, Group, Comment, Follow
 
 User = get_user_model()
 
@@ -19,7 +19,6 @@ class PostURLTests(TestCase):
             text='Тестовый текст',
             author=cls.user,
             group=cls.group,
-
         )
 
     def setUp(self):
@@ -56,6 +55,7 @@ class PostURLTests(TestCase):
             'post-create': '/create/',
             'follow_index': '/follow/'
         }
+
         for template, address in path_names.items():
             with self.subTest(address=address):
                 response = self.authorized_client.get(address)
@@ -69,7 +69,7 @@ class PostURLTests(TestCase):
         """URL-адрес использует соответствующий шаблон."""
         # Шаблоны по адресам
         templates_page_names = {
-            # '/': 'posts/index.html',
+            '/': 'posts/index.html',
             f'/group/{self.group.slug}/': 'posts/group_list.html',
             f'/profile/{self.user.username}/': 'posts/profile.html',
             f'/posts/{self.post.id}/': 'posts/post_detail.html',
@@ -88,6 +88,8 @@ class PostURLTests(TestCase):
         path_names = {
             'post_edit': f'/posts/{self.post.id}/edit/',
             'post_create': '/create/',
+            'follow_index': '/follow/',
+            'add_comment': f'/posts/{self.post.id}/edit/'
         }
         for template, address in path_names.items():
             with self.subTest(address=address):
@@ -96,4 +98,10 @@ class PostURLTests(TestCase):
 
     def test_post_edit_ne_author_users(self):
         response = self.ne_author.get(f'/posts/{self.post.id}/edit/')
+        self.assertEqual(response.status_code, 302)
+
+    def test_url_follow_guest_users(self):
+
+        response = self.authorized_client.get('/follow/')
+
         self.assertEqual(response.status_code, 302)

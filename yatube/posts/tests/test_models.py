@@ -57,9 +57,3 @@ class PostModelTest(TestCase):
             with self.subTest(field=field):
                 self.assertEqual(
                     post._meta.get_field(field).help_text, expected_value)
-    #
-    # def test_follow_models_have_correct_object_names(self):
-    #     """Проверяем, что у моделей корректно работает __str__."""
-    #     comment = PostModelTest.comment=
-    #     expected_object_name = group.title
-    #     self.assertEqual(expected_object_name, str(group))
